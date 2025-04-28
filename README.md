@@ -1,105 +1,80 @@
--- Tanjiro Hub | Kaitun Edition
--- Script para Blox Fruits feito por ChatGPT
-
--- Carregar a UI
-local Library = loadstring(game:HttpGet("https://raw.githubusercontent.com/xHeptc/Kavo-UI-Library/main/source.lua"))()
-local Window = Library.CreateLib("Tanjiro Hub | Kaitun Mode", "BloodTheme")
+-- Tanjiro Hub | Simples e Funcional
+-- Feito por ChatGPT para Blox Fruits
 
 -- Variáveis
 getgenv().AutoFarm = false
-getgenv().AutoQuest = false
-getgenv().SelectedWeapon = "Melee" -- Você pode mudar para "Sword", "Gun", "Fruit"
 
 -- Serviços
-local player = game.Players.LocalPlayer
+local plr = game.Players.LocalPlayer
 local rs = game:GetService("ReplicatedStorage")
 local ws = game:GetService("Workspace")
 
--- Função para pegar arma/fruta
-function EquipWeapon(ToolName)
-    if player.Backpack:FindFirstChild(ToolName) then
-        player.Character.Humanoid:EquipTool(player.Backpack[ToolName])
+-- Funções
+function EquipBestWeapon()
+    local tool = plr.Backpack:FindFirstChildOfClass("Tool")
+    if tool then
+        plr.Character.Humanoid:EquipTool(tool)
     end
 end
 
--- Função para encontrar inimigo certo
-function GetEnemy()
-    local enemies = ws.Enemies:GetChildren()
-    for i,v in pairs(enemies) do
-        if v:FindFirstChild("Humanoid") and v.Humanoid.Health > 0 then
-            if v.Name:match(EnemyName) then
-                return v
+function GetNearestEnemy()
+    local closest, distance = nil, math.huge
+    for _,enemy in pairs(ws.Enemies:GetChildren()) do
+        if enemy:FindFirstChild("Humanoid") and enemy.Humanoid.Health > 0 then
+            local dist = (plr.Character.HumanoidRootPart.Position - enemy.HumanoidRootPart.Position).magnitude
+            if dist < distance then
+                closest = enemy
+                distance = dist
             end
         end
     end
-    return nil
+    return closest
 end
 
--- Função para Start AutoFarm
-function StartFarm()
-    spawn(function()
-        while getgenv().AutoFarm do
-            pcall(function()
-                EquipWeapon(getgenv().SelectedWeapon)
-                
-                -- Detecção automática de missões e inimigos
-                SetQuest()
-
-                local enemy = GetEnemy()
-                if enemy then
-                    repeat
-                        player.Character.HumanoidRootPart.CFrame = enemy.HumanoidRootPart.CFrame * CFrame.new(0,5,0)
-                        rs.Remotes.CommF_:InvokeServer("Attack")
-                        wait(0.1)
-                    until enemy.Humanoid.Health <= 0 or not getgenv().AutoFarm
-                else
-                    wait(1)
-                end
-            end)
-            wait(0.5)
-        end
-    end)
-end
-
--- Função para detectar e aceitar a missão correta
-function SetQuest()
-    local level = player.Data.Level.Value
-    if level <= 10 then
-        QuestName = "BanditQuest1"
-        EnemyName = "Bandit"
-        QuestPos = CFrame.new(1060,16,1547)
-    elseif level <= 20 then
-        QuestName = "BanditQuest2"
-        EnemyName = "Brute"
-        QuestPos = CFrame.new(1060,16,1547)
-    -- Aqui você continua adicionando mais quests conforme o level
+function StartAutoFarm()
+    while getgenv().AutoFarm do
+        pcall(function()
+            EquipBestWeapon()
+            local enemy = GetNearestEnemy()
+            if enemy then
+                plr.Character.HumanoidRootPart.CFrame = enemy.HumanoidRootPart.CFrame * CFrame.new(0,5,0)
+                rs.Remotes.CommF_:InvokeServer("Attack")
+            end
+        end)
+        task.wait(0.3)
     end
-
-    -- Aceitar a missão
-    rs.Remotes.CommF_:InvokeServer("StartQuest", QuestName, 1)
 end
+
+-- Interface Básica
+local ScreenGui = Instance.new("ScreenGui")
+local ToggleButton = Instance.new("TextButton")
+
+ScreenGui.Parent = game.CoreGui
+ToggleButton.Parent = ScreenGui
+ToggleButton.Position = UDim2.new(0, 50, 0, 100)
+ToggleButton.Size = UDim2.new(0, 200, 0, 50)
+ToggleButton.Text = "Tanjiro Hub: Ativar AutoFarm"
+ToggleButton.BackgroundColor3 = Color3.fromRGB(200,50,50)
+ToggleButton.TextColor3 = Color3.fromRGB(255,255,255)
+ToggleButton.Font = Enum.Font.SourceSansBold
+ToggleButton.TextSize = 22
+
+ToggleButton.MouseButton1Click:Connect(function()
+    getgenv().AutoFarm = not getgenv().AutoFarm
+    if getgenv().AutoFarm then
+        ToggleButton.Text = "Tanjiro Hub: AutoFarm ON"
+        StartAutoFarm()
+    else
+        ToggleButton.Text = "Tanjiro Hub: AutoFarm OFF"
+    end
+end)
 
 -- Anti-AFK
 pcall(function()
     local vu = game:GetService("VirtualUser")
-    game:GetService("Players").LocalPlayer.Idled:connect(function()
+    plr.Idled:connect(function()
         vu:Button2Down(Vector2.new(0,0),workspace.CurrentCamera.CFrame)
         wait(1)
         vu:Button2Up(Vector2.new(0,0),workspace.CurrentCamera.CFrame)
     end)
-end)
-
--- Criação das abas
-local FarmTab = Window:NewTab("Auto Farm")
-local FarmSection = FarmTab:NewSection("Farm")
-
-FarmSection:NewToggle("Auto Farm Kaitun", "Farm Inteligente", function(state)
-    getgenv().AutoFarm = state
-    if state then
-        StartFarm()
-    end
-end)
-
-FarmSection:NewDropdown("Arma/Fruit", "Selecionar Arma ou Fruta", {"Melee", "Sword", "Gun", "Fruit"}, function(currentOption)
-    getgenv().SelectedWeapon = currentOption
 end)
