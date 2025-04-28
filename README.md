@@ -1,8 +1,14 @@
--- Tanjiro Hub | Simples e Funcional
+-- Tanjiro Hub | Estilo Redz (Azul)
 -- Feito por ChatGPT para Blox Fruits
+
+-- UI Library
+local Library = loadstring(game:HttpGet("https://raw.githubusercontent.com/xHeptc/Kavo-UI-Library/main/source.lua"))()
+
+local Window = Library.CreateLib("Tanjiro Hub", "Sentinel") -- Tema Azul
 
 -- Variáveis
 getgenv().AutoFarm = false
+getgenv().AutoFarmBoss = false
 
 -- Serviços
 local plr = game.Players.LocalPlayer
@@ -10,63 +16,68 @@ local rs = game:GetService("ReplicatedStorage")
 local ws = game:GetService("Workspace")
 
 -- Funções
-function EquipBestWeapon()
-    local tool = plr.Backpack:FindFirstChildOfClass("Tool")
-    if tool then
-        plr.Character.Humanoid:EquipTool(tool)
+function EquipWeapon()
+    for i,v in pairs(plr.Backpack:GetChildren()) do
+        if v:IsA("Tool") then
+            plr.Character.Humanoid:EquipTool(v)
+            break
+        end
     end
 end
 
-function GetNearestEnemy()
-    local closest, distance = nil, math.huge
-    for _,enemy in pairs(ws.Enemies:GetChildren()) do
-        if enemy:FindFirstChild("Humanoid") and enemy.Humanoid.Health > 0 then
-            local dist = (plr.Character.HumanoidRootPart.Position - enemy.HumanoidRootPart.Position).magnitude
-            if dist < distance then
-                closest = enemy
-                distance = dist
+function GetClosestEnemy()
+    local nearest, dist = nil, math.huge
+    for i,v in pairs(ws.Enemies:GetChildren()) do
+        if v:FindFirstChild("Humanoid") and v.Humanoid.Health > 0 then
+            local magnitude = (plr.Character.HumanoidRootPart.Position - v.HumanoidRootPart.Position).magnitude
+            if magnitude < dist then
+                nearest = v
+                dist = magnitude
             end
         end
     end
-    return closest
+    return nearest
 end
 
-function StartAutoFarm()
+function AutoFarm()
     while getgenv().AutoFarm do
         pcall(function()
-            EquipBestWeapon()
-            local enemy = GetNearestEnemy()
+            EquipWeapon()
+            local enemy = GetClosestEnemy()
             if enemy then
                 plr.Character.HumanoidRootPart.CFrame = enemy.HumanoidRootPart.CFrame * CFrame.new(0,5,0)
                 rs.Remotes.CommF_:InvokeServer("Attack")
             end
         end)
-        task.wait(0.3)
+        wait(0.2)
     end
 end
 
--- Interface Básica
-local ScreenGui = Instance.new("ScreenGui")
-local ToggleButton = Instance.new("TextButton")
+-- ABA 1: Auto Farm
+local FarmTab = Window:NewTab("Auto Farm")
+local FarmSection = FarmTab:NewSection("Main Farm")
 
-ScreenGui.Parent = game.CoreGui
-ToggleButton.Parent = ScreenGui
-ToggleButton.Position = UDim2.new(0, 50, 0, 100)
-ToggleButton.Size = UDim2.new(0, 200, 0, 50)
-ToggleButton.Text = "Tanjiro Hub: Ativar AutoFarm"
-ToggleButton.BackgroundColor3 = Color3.fromRGB(200,50,50)
-ToggleButton.TextColor3 = Color3.fromRGB(255,255,255)
-ToggleButton.Font = Enum.Font.SourceSansBold
-ToggleButton.TextSize = 22
-
-ToggleButton.MouseButton1Click:Connect(function()
-    getgenv().AutoFarm = not getgenv().AutoFarm
-    if getgenv().AutoFarm then
-        ToggleButton.Text = "Tanjiro Hub: AutoFarm ON"
-        StartAutoFarm()
-    else
-        ToggleButton.Text = "Tanjiro Hub: AutoFarm OFF"
+FarmSection:NewToggle("Ativar AutoFarm", "Farmar automaticamente", function(state)
+    getgenv().AutoFarm = state
+    if state then
+        AutoFarm()
     end
+end)
+
+-- ABA 2: Teleports Simples
+local TeleportTab = Window:NewTab("Teleports")
+local TeleportSection = TeleportTab:NewSection("Ilhas")
+
+TeleportSection:NewButton("Ir para Starter Island", "Teleporta", function()
+    plr.Character.HumanoidRootPart.CFrame = CFrame.new(-260, 7, 1550)
+end)
+
+TeleportSection:NewButton("Ir para Jungle Island", "Teleporta", function()
+    plr.Character.HumanoidRootPart.CFrame = CFrame.new(-1250, 11, 350)
+end)
+
+TeleportSection:NewButton("Ir para Marine Fortress", "Teleporta", function()
+    plr.Character.HumanoidRootPart.CFrame = CFrame.new(-4500, 20, 4300)
 end)
 
 -- Anti-AFK
