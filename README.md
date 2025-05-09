@@ -1,155 +1,76 @@
--- Tanjiro Hub | Supreme Blue Edition
--- Feito por ChatGPT para Blox Fruits
+-- ESP Simples com interface básica
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+local LocalPlayer = Players.LocalPlayer
+local Camera = workspace.CurrentCamera
 
--- Criar Toggle Gui
-local ScreenGui = Instance.new("ScreenGui")
-local OpenButton = Instance.new("TextButton")
+local ESPEnabled = true
+local ESPObjects = {}
 
-ScreenGui.Parent = game.CoreGui
-ScreenGui.Name = "TanjiroToggleGui"
+-- Função para criar uma linha de ESP
+local function createESP(player)
+    local box = Drawing.new("Square")
+    box.Color = Color3.fromRGB(255, 255, 0)
+    box.Thickness = 2
+    box.Filled = false
+    box.Visible = false
 
-OpenButton.Parent = ScreenGui
-OpenButton.Size = UDim2.new(0, 50, 0, 50)
-OpenButton.Position = UDim2.new(0, 10, 0, 10)
-OpenButton.BackgroundColor3 = Color3.fromRGB(0,0,0)
-OpenButton.Text = "☰"
-OpenButton.Font = Enum.Font.SourceSansBold
-OpenButton.TextColor3 = Color3.fromRGB(255,255,255)
-OpenButton.TextSize = 30
+    local name = Drawing.new("Text")
+    name.Size = 16
+    name.Color = Color3.fromRGB(255, 255, 255)
+    name.Center = true
+    name.Outline = true
+    name.Visible = false
 
--- Variável do Hub Principal
-local HubVisible = false
-local MainGui
-
--- Função para Criar o Hub
-function CreateHub()
-    -- Carregar Library Azul
-    local Library = loadstring(game:HttpGet("https://raw.githubusercontent.com/xHeptc/Kavo-UI-Library/main/source.lua"))()
-    MainGui = Library.CreateLib("Tanjiro Hub | Blue Mode", "Sentinel") -- Tema Azul
-
-    -- Variáveis Globais
-    getgenv().AutoFarm = false
-    getgenv().SelectedWeapon = "Melee"
-
-    -- Serviços
-    local plr = game.Players.LocalPlayer
-    local rs = game:GetService("ReplicatedStorage")
-    local ws = game:GetService("Workspace")
-
-    -- Funções
-    function EquipWeapon()
-        for i,v in pairs(plr.Backpack:GetChildren()) do
-            if v:IsA("Tool") then
-                plr.Character.Humanoid:EquipTool(v)
-                break
-            end
-        end
-    end
-
-    function GetClosestEnemy()
-        local closest, dist = nil, math.huge
-        for _, enemy in pairs(ws.Enemies:GetChildren()) do
-            if enemy:FindFirstChild("Humanoid") and enemy.Humanoid.Health > 0 then
-                local mag = (plr.Character.HumanoidRootPart.Position - enemy.HumanoidRootPart.Position).Magnitude
-                if mag < dist then
-                    closest = enemy
-                    dist = mag
-                end
-            end
-        end
-        return closest
-    end
-
-    function StartAutoFarm()
-        while getgenv().AutoFarm do
-            pcall(function()
-                EquipWeapon()
-                local enemy = GetClosestEnemy()
-                if enemy then
-                    plr.Character.HumanoidRootPart.CFrame = enemy.HumanoidRootPart.CFrame * CFrame.new(0,5,0)
-                    rs.Remotes.CommF_:InvokeServer("Attack")
-                end
-            end)
-            task.wait(0.3)
-        end
-    end
-
-    -- Tabs
-    local FarmTab = MainGui:NewTab("Auto Farm")
-    local TeleportTab = MainGui:NewTab("Teleports")
-    local VisualTab = MainGui:NewTab("Visual (ESP)")
-    local CreditsTab = MainGui:NewTab("Créditos")
-
-    -- Seções
-    local FarmSection = FarmTab:NewSection("Farm")
-    FarmSection:NewToggle("Ativar AutoFarm", "Farme automaticamente", function(state)
-        getgenv().AutoFarm = state
-        if state then
-            StartAutoFarm()
-        end
-    end)
-
-    local TeleportSection = TeleportTab:NewSection("Teleports rápidos")
-    TeleportSection:NewButton("Ir para Starter Island", "TP", function()
-        plr.Character.HumanoidRootPart.CFrame = CFrame.new(-260, 7, 1550)
-    end)
-    TeleportSection:NewButton("Ir para Jungle Island", "TP", function()
-        plr.Character.HumanoidRootPart.CFrame = CFrame.new(-1249, 15, 340)
-    end)
-    TeleportSection:NewButton("Ir para Marine Fortress", "TP", function()
-        plr.Character.HumanoidRootPart.CFrame = CFrame.new(-4500, 20, 4300)
-    end)
-
-    local VisualSection = VisualTab:NewSection("ESP")
-    VisualSection:NewButton("Ativar ESP de Inimigos", "Ver NPCs através das paredes", function()
-        for i,v in pairs(ws.Enemies:GetChildren()) do
-            if v:FindFirstChild("HumanoidRootPart") then
-                local esp = Instance.new("BillboardGui", v.HumanoidRootPart)
-                esp.Size = UDim2.new(0,100,0,40)
-                esp.AlwaysOnTop = true
-                local text = Instance.new("TextLabel", esp)
-                text.Size = UDim2.new(1,0,1,0)
-                text.BackgroundTransparency = 1
-                text.Text = v.Name
-                text.TextColor3 = Color3.fromRGB(0,255,255)
-                text.TextStrokeTransparency = 0
-            end
-        end
-    end)
-
-    local CreditsSection = CreditsTab:NewSection("Feito por ChatGPT")
-    CreditsSection:NewLabel("Tanjiro Hub - Supreme Blue Edition")
+    ESPObjects[player] = {Box = box, Name = name}
 end
 
--- Sistema de abrir/fechar
-OpenButton.MouseButton1Click:Connect(function()
-    if not HubVisible then
-        if not MainGui then
-            CreateHub()
-        else
-            for _,v in pairs(game.CoreGui:GetChildren()) do
-                if v.Name == "Tanjiro Hub | Blue Mode" then
-                    v.Enabled = true
-                end
+-- Atualiza os ESPs
+RunService.RenderStepped:Connect(function()
+    if not ESPEnabled then return end
+
+    for _, player in ipairs(Players:GetPlayers()) do
+        if player ~= LocalPlayer and player.Character and player.Character:FindFirstChild("HumanoidRootPart") then
+            local esp = ESPObjects[player]
+            if not esp then
+                createESP(player)
+                esp = ESPObjects[player]
             end
-        end
-        HubVisible = true
-    else
-        for _,v in pairs(game.CoreGui:GetChildren()) do
-            if v.Name == "Tanjiro Hub | Blue Mode" then
-                v.Enabled = false
+
+            local pos, onScreen = Camera:WorldToViewportPoint(player.Character.HumanoidRootPart.Position)
+            if onScreen then
+                local size = Vector2.new(40, 60)
+                esp.Box.Size = size
+                esp.Box.Position = Vector2.new(pos.X - size.X/2, pos.Y - size.Y/2)
+                esp.Box.Visible = true
+
+                esp.Name.Text = player.Name
+                esp.Name.Position = Vector2.new(pos.X, pos.Y - size.Y/2 - 15)
+                esp.Name.Visible = true
+            else
+                esp.Box.Visible = false
+                esp.Name.Visible = false
             end
+        elseif ESPObjects[player] then
+            ESPObjects[player].Box.Visible = false
+            ESPObjects[player].Name.Visible = false
         end
-        HubVisible = false
     end
 end)
 
--- Anti-AFK
-pcall(function()
-    local vu = game:GetService("VirtualUser")
-    game:GetService("Players").LocalPlayer.Idled:connect(function()
-        vu:Button2Down(Vector2.new(0,0),workspace.CurrentCamera.CFrame)
-        wait(1)
-        vu:Button2Up(Vector2.new(0,0),workspace.CurrentCamera.CFrame)
-    end)
+-- Remover ESPs ao sair
+Players.PlayerRemoving:Connect(function(player)
+    if ESPObjects[player] then
+        ESPObjects[player].Box:Remove()
+        ESPObjects[player].Name:Remove()
+        ESPObjects[player] = nil
+    end
+end)
+
+-- Interface simples para toggle (pressionar "J" ativa/desativa)
+game:GetService("UserInputService").InputBegan:Connect(function(input)
+    if input.KeyCode == Enum.KeyCode.J then
+        ESPEnabled = not ESPEnabled
+        print("ESP Ativado:", ESPEnabled)
+    end
 end)
